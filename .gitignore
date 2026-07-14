@@ -1,0 +1,7 @@
+# 本地歸檔（含 kidd0368 原始 pipeline，不對外公開；避免版權疑慮）
+reference/
+# 中間產物（build 會自動重生）
+out/
+__pycache__/
+*.pyc
+brave_tmp/

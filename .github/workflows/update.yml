@@ -1,0 +1,50 @@
+name: 每日更新台股去槓桿儀表板
+
+on:
+  schedule:
+    - cron: "30 9 * * 1-5"   # UTC 09:30 = 台北 17:30（收盤後）
+  workflow_dispatch: {}       # 可手動觸發
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-tw-dashboard
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安裝依賴
+        run: pip install requests
+
+      - name: 抓取 FinMind 融資 + TWSE 大盤（月批次有快取）
+        run: python fetch_tw.py
+
+      - name: 計算指標
+        run: python compute_indicators_tw.py data/tw_leverage_bulk.json
+
+      - name: 組裝儀表板
+        run: |
+          python build_tw.py
+          cp out/tw_deleverage_dashboard.html index.html
+
+      - name: 提交更新
+        run: |
+          git config user.name "dashboard-bot"
+          git config user.email "actions@github.com"
+          git add index.html data/fmtqik_cache.json
+          if git diff --cached --quiet; then
+            echo "無變化，跳過提交"
+          else
+            git commit -m "自動更新 $(date -u +%Y-%m-%d)"
+            git push
+          fi
